@@ -194,3 +194,78 @@ The program implements comprehensive protocol mapping based on [IANA protocol nu
 1. Support for additional log formats (easily achievable through the Strategy pattern):
     - Custom VPC flow log formats
 2. Support for IPv6 addresses (Just need to change the parseIPAddressMethod in the FlowParsingStrategy implementation)
+
+
+# Testing
+
+## Test Files Organization
+The project includes several test files located in `src/test/resources/` to verify different scenarios and edge cases. Each test file focuses on specific test scenarios:
+
+### 1. Basic Test Cases (`test_flowlogs_basic.txt`)
+```
+2 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 49153 6 25 20000 1620140761 1620140821 ACCEPT OK
+2 123456789012 eni-4d3c2b1a 192.168.1.100 203.0.113.101 23 49154 17 15 12000 1620140761 1620140821 REJECT OK
+2 123456789012 eni-5e6f7g8h 192.168.1.101 198.51.100.3 25 49155 1 10 8000 1620140761 1620140821 ACCEPT OK
+```
+Tests:
+- Standard valid log entries
+- Different protocols (TCP=6, UDP=17, ICMP=1)
+- Various port combinations
+
+### 2. Edge Cases (`test_flowlogs_edge_cases.txt`)
+```
+3 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 49153 6 25 20000 1620140761 1620140821 ACCEPT OK
+2 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 49153 6 25 20000 1620140761
+2 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 65536 6 25 20000 1620140761 1620140821 ACCEPT OK
+```
+Tests:
+- Invalid version numbers (only version 2 is supported)
+- Incomplete log entries
+- Out-of-range port numbers (>65535)
+- Invalid protocol numbers
+- Malformed lines
+
+### 3. Mixed Valid and Invalid Entries (`test_flowlogs_mixed.txt`)
+```
+2 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 49153 6 25 20000 1620140761 1620140821 ACCEPT OK
+3 123456789012 eni-0a1b2c3d 10.0.1.201 198.51.100.2 443 49153 6 25 20000 1620140761 1620140821 ACCEPT OK
+2 123456789012 invalid_line
+2 123456789012 eni-5e6f7g8h 192.168.1.101 198.51.100.3 25 49155 6 10 8000 1620140761 1620140821 ACCEPT OK
+```
+Tests:
+- Error recovery and continuation
+- Output generation with partial failures
+- Processing valid entries despite surrounding invalid ones
+
+### 4. Optional Fields and Placeholders (`test_flowlogs_optional_fields.txt`)
+```
+2 - eni-0a1b2c3d - 198.51.100.2 - 49153 6 - - 1620140761 1620140821 ACCEPT OK
+2 123456789012 - 10.0.1.201 - 443 49153 6 25 - - - - OK
+2 123456789012 eni-4d3c2b1a - - - 49154 6 15 12000 1620140761 1620140821 REJECT -
+```
+Tests:
+- Optional field handling with "-" placeholders
+- Missing timestamps
+- Missing IP addresses
+- Empty interface IDs
+
+## Test Coverage
+
+### Data Validation
+- Port numbers (0-65535)
+- Known protocol numbers (1-142)
+- IPv4 address format
+- Version number validation
+- Field count validation
+- Data type validation for each field
+
+### Error Handling
+- Graceful handling of invalid entries
+- Proper error messages for each validation failure
+- Continued processing after encountering errors
+- Resource cleanup in error scenarios
+
+### Optional Fields
+- Handling of missing fields marked with "-"
+- Required vs optional field validation
+- Default value handling
